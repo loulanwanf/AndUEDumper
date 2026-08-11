@@ -24,17 +24,16 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      # 核心修复：用管道注入输入，绕过交互选择
       - name: 执行官方构建脚本
         run: |
           cd AndUEDumper
           chmod +x build.sh
-          # 自动选择 ndk-build (输入 2)
+          # 自动输入2并执行脚本
           echo "2" | ./build.sh
 
-            - name: 上传编译产物
+      # 这里的路径严格对应你刚才那版脚本里的 NDK_LIBS_OUT 路径
+      - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
           name: UEDump3r-binaries
-          # 修正为官方脚本明确输出的目录
           path: AndUEDumper/ndk_build/libs/**/UEDump3r*
