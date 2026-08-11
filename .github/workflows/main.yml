@@ -28,40 +28,66 @@ jobs:
         run: |
           cd AndUEDumper
           chmod +x build.sh
-          # 自动输入2并执行脚本
-          echo "2" | ./build.sh
-            # 替换你原有的步骤，改成这个：
-      - name: 执行官方构建脚本
-        run: |
-          cd AndUEDumper
-          chmod +x build.sh
           echo "2" | ./build.sh
 
-      - name: 自动打包成自解压 SH 脚本
+      - name: 生成 GZIP 自解压安卓原生 SH 脚本
         run: |
           cd AndUEDumper
-          
-          # 1. 创建一个 Shell 外壳脚本
           cat > AutoUEDump_GUI.sh << 'EOF'
-          #!/bin/bash
-          # ===============================
-          # 以下放入截图里 1~48 行的解压/清理/临时目录设置代码
-          # ===============================
-          # (如果你有原版这 48 行代码，直接粘贴到这个位置即可)
-          # ===============================
-          echo "正在解包核心工具..."
-          EOF
-          
-          # 2. 把编译出来的 UEDump3r 文件进行 base64 编码，追加到脚本末尾
-          echo "# 这里是二进制载荷" >> AutoUEDump_GUI.sh
-          base64 -w 0 ndk_build/libs/arm64-v8a/UEDump3r >> AutoUEDump_GUI.sh
-          
-          # 3. 给最终脚本赋予执行权限
+#!/bin/sh
+skip=49
+tab="$(printf '\t')"
+nl='
+'
+IFS=" $tab$nl"
+umask=`umask`
+umask 77
+gztmpdir=
+trap 'res=$?
+  test -n "$gztmpdir" && rm -fr "$gztmpdir"
+  (exit $res); exit $res
+' 0 1 2 3 5 10 13 15
+case $TMPDIR in
+  / | /*/) ;;
+  /*) TMPDIR=$TMPDIR/;;
+  *) TMPDIR=/tmp/;;
+esac
+if type mktemp >/dev/null 2>&1; then
+  gztmpdir=`mktemp -d "${TMPDIR}gztmpXXXXXXXXX"`
+else
+  gztmpdir=${TMPDIR}gztmp$$; mkdir $gztmpdir
+fi || { (exit 127); exit 127; }
+gztmp=$gztmpdir/$0
+case $0 in
+-* | */*'
+') mkdir -p "$gztmp" && rm -r "$gztmp";;
+*/*) gztmp=$gztmpdir/`basename "$0"`;;
+esac || { (exit 127); exit 127; }
+case `printf 'X\n' | tail -n +1 2>/dev/null` in
+X) tail_n=-n;;
+*) tail_n=;;
+esac
+if tail $tail_n +$skip <"$0" | gzip -cd > "$gztmp"; then
+  umask $umask
+  chmod 700 "$gztmp"
+  (sleep 5; rm -fr "$gztmpdir") 2>/dev/null &
+  
+  # 直接把你在终端里敲的所有参数原封不动传给核心工具！
+  # 如果你不敲任何参数，它就会自动扫描运行中的 UE4 游戏！
+  "$gztmp" "$@"
+  res=$?
+else
+  printf >&2 '%s\n' "Cannot decompress $0"
+  (exit 127); res=127
+fi; exit $res
+EOF
+
+          # 追加 gzip 压缩的二进制尾部
+          gzip -c ndk_build/libs/arm64-v8a/UEDump3r >> AutoUEDump_GUI.sh
           chmod +x AutoUEDump_GUI.sh
 
       - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
-          name: UEDump3r-binaries
-          # 这次上传那个“外壳+数据”一体的单文件
+          name: UEDump3r-Launcher
           path: AndUEDumper/AutoUEDump_GUI.sh
