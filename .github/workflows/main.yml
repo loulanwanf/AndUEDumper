@@ -1,4 +1,4 @@
-name: Build UEDumper (External ImGui)
+name: Build UEDumper (GUI Fix)
 on:
   workflow_dispatch:
 
@@ -9,7 +9,7 @@ jobs:
       - name: 修正子模块协议
         run: git config --global url."https://github.com/".insteadOf git://github.com/
 
-      - name: 拉取代码（包含子模块）
+      - name: 拉取代码
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
@@ -21,8 +21,17 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      # 重点：输入 "1" 选择 CMake，把 ImGui 图形库编译进去
-      - name: 执行 CMake 构建
+      # 重点：在编译前，用 sed 命令自动修补源码中的两处致命错误
+      - name: 自动修复上游源码兼容性问题
+        run: |
+          cd AndUEDumper
+          # 修复 nlohmann/json.hpp 的 u8string 类型转换错误
+          sed -i 's/const std::u8string s = p.u8string();/const std::string s = p.u8string();/' ../deps/nlohmann/json.hpp
+          
+          # 修复 Dumper.cpp 第 302 行的指针重载比较歧义
+          sed -i 's/pkg.first == packageObj/(uintptr_t)pkg.first == (uintptr_t)packageObj.object/' src/Dumper.cpp
+
+      - name: 执行 CMake 构建 (ImGui GUI 版本)
         run: |
           cd AndUEDumper
           chmod +x build.sh
