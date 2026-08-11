@@ -1,0 +1,30 @@
+name: Build UEDumper
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 拉取代码（含子模块）
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: 下载并配置 NDK r25c
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r25c-linux.zip
+          unzip android-ndk-r25c-linux.zip
+          echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: 编译
+        run: |
+          cd AndUEDumper/AndUEDumper
+          make clean && make
+
+      - name: 上传编译产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: UEDump3r-binaries
+          path: AndUEDumper/AndUEDumper/UEDump3r*
