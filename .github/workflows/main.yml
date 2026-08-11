@@ -36,9 +36,9 @@ jobs:
           cat > AutoUEDump_GUI.sh << 'EOF'
 #!/bin/sh
 skip=49
-tab="$(printf '\t')"
-nl='
-'
+# 修复了YAML解析器遇到字面换行符崩溃的问题
+tab=$'\t'
+nl=$'\n'
 IFS=" $tab$nl"
 umask=`umask`
 umask 77
