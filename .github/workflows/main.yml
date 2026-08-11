@@ -28,11 +28,11 @@ jobs:
 
       - name: 编译
         run: |
-          cd AndUEDumper/AndUEDumper
+          cd AndUEDumper
           make clean && make
 
       - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
           name: UEDump3r-binaries
-          path: AndUEDumper/AndUEDumper/UEDump3r*
+          path: AndUEDumper/UEDump3r*
