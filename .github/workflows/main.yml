@@ -6,7 +6,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 修正 Git 协议
+      - name: 强制修正 Git 协议（防止子模块拉取超时）
         run: |
           git config --global url."https://github.com/".insteadOf git://github.com/
           git config --global url."https://".insteadOf git://
@@ -24,19 +24,18 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      - name: 编译核心工具
+      - name: 执行官方构建脚本
         run: |
           cd AndUEDumper
           chmod +x build.sh
           echo "2" | ./build.sh
 
-      - name: 打包为安卓自解压脚本
+      - name: 生成原生安卓自解压 SH 脚本
         run: |
           cd AndUEDumper
           cat > AutoUEDump_GUI.sh << 'EOF'
 #!/bin/sh
 skip=49
-# 修复了YAML解析器遇到字面换行符崩溃的问题
 tab=$'\t'
 nl=$'\n'
 IFS=" $tab$nl"
