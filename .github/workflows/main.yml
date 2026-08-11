@@ -1,4 +1,4 @@
-name: Build UEDumper (GUI Fix)
+name: Build UEDumper (GUI Final)
 on:
   workflow_dispatch:
 
@@ -21,15 +21,19 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      # 重点：在编译前，用 sed 命令自动修补源码中的两处致命错误
-      - name: 自动修复上游源码兼容性问题
+      # 重点：本次终极修补，绕过所有编译权限陷阱
+      - name: 自动修复第三方库兼容性和 UE 类结构
         run: |
           cd AndUEDumper
-          # 修复 nlohmann/json.hpp 的 u8string 类型转换错误
+          
+          # 1. 修复 nlohmann/json.hpp 的 std::u8string 类型转换错误
           sed -i 's/const std::u8string s = p.u8string();/const std::string s = p.u8string();/' ../deps/nlohmann/json.hpp
           
-          # 修复 Dumper.cpp 第 302 行的指针重载比较歧义
-          sed -i 's/pkg.first == packageObj/(uintptr_t)pkg.first == (uintptr_t)packageObj.object/' src/Dumper.cpp
+          # 2. 给 UEWrappers.hpp 里的 UE_UObject 类添加一个公共 getter 方法，绕开 protected 限制
+          sed -i '/protected:/a \    uint8_t* getObject() const { return object; }' src/UE/UEWrappers.hpp
+
+          # 3. 修改 Dumper.cpp 里的比较代码，调用刚才加上的公共 getter 方法
+          sed -i 's/pkg.first == packageObj/(uintptr_t)pkg.first == (uintptr_t)packageObj.getObject()/' src/Dumper.cpp
 
       - name: 执行 CMake 构建 (ImGui GUI 版本)
         run: |
