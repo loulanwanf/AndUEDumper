@@ -32,8 +32,9 @@ jobs:
           # 自动选择 ndk-build (输入 2)
           echo "2" | ./build.sh
 
-      - name: 上传编译产物
+            - name: 上传编译产物
         uses: actions/upload-artifact@v4
         with:
           name: UEDump3r-binaries
-          path: AndUEDumper/UEDump3r*
+          # 修正为官方脚本明确输出的目录
+          path: AndUEDumper/ndk_build/libs/**/UEDump3r*
