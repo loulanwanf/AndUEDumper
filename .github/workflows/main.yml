@@ -1,0 +1,88 @@
+name: Build UEDumper
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 修正 Git 协议
+        run: |
+          git config --global url."https://github.com/".insteadOf git://github.com/
+          git config --global url."https://".insteadOf git://
+
+      - name: 拉取代码（含子模块）
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 下载并配置 NDK r25c
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r25c-linux.zip
+          unzip android-ndk-r25c-linux.zip
+          echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: 编译核心工具
+        run: |
+          cd AndUEDumper
+          chmod +x build.sh
+          echo "2" | ./build.sh
+
+      - name: 打包为安卓自解压脚本
+        run: |
+          cd AndUEDumper
+          cat > AutoUEDump_GUI.sh << 'EOF'
+#!/bin/sh
+skip=49
+tab="$(printf '\t')"
+nl='
+'
+IFS=" $tab$nl"
+umask=`umask`
+umask 77
+gztmpdir=
+trap 'res=$?
+  test -n "$gztmpdir" && rm -fr "$gztmpdir"
+  (exit $res); exit $res
+' 0 1 2 3 5 10 13 15
+case $TMPDIR in
+  / | /*/) ;;
+  /*) TMPDIR=$TMPDIR/;;
+  *) TMPDIR=/tmp/;;
+esac
+if type mktemp >/dev/null 2>&1; then
+  gztmpdir=`mktemp -d "${TMPDIR}gztmpXXXXXXXXX"`
+else
+  gztmpdir=${TMPDIR}gztmp$$; mkdir $gztmpdir
+fi || { (exit 127); exit 127; }
+gztmp=$gztmpdir/$0
+case $0 in
+-* | */*'
+') mkdir -p "$gztmp" && rm -r "$gztmp";;
+*/*) gztmp=$gztmpdir/`basename "$0"`;;
+esac || { (exit 127); exit 127; }
+case `printf 'X\n' | tail -n +1 2>/dev/null` in
+X) tail_n=-n;;
+*) tail_n=;;
+esac
+if tail $tail_n +$skip <"$0" | gzip -cd > "$gztmp"; then
+  umask $umask
+  chmod 700 "$gztmp"
+  (sleep 5; rm -fr "$gztmpdir") 2>/dev/null &
+  "$gztmp" "$@"
+  res=$?
+else
+  printf >&2 '%s\n' "Cannot decompress $0"
+  (exit 127); res=127
+fi; exit $res
+EOF
+          gzip -c ndk_build/libs/arm64-v8a/UEDump3r >> AutoUEDump_GUI.sh
+          chmod +x AutoUEDump_GUI.sh
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: UEDump3r-Launcher
+          path: AndUEDumper/AutoUEDump_GUI.sh
