@@ -21,19 +21,19 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      # 终极修补方案：放弃加函数，直接把 UObject 的 protected 改为 public！
-      - name: 自动修复第三方库兼容性及成员访问权限
+      # 终极快刀斩乱麻：直接绕过 C++ 的运算符重载陷阱
+      - name: 强制修复指针比较歧义和私有属性
         run: |
           cd AndUEDumper
           
-          # 1. 修复 nlohmann/json.hpp 的 std::u8string 类型转换错误
+          # 修复 nlohmann/json.hpp 的 u8string 类型错误
           sed -i 's/const std::u8string s = p.u8string();/const std::string s = p.u8string();/' ../deps/nlohmann/json.hpp
           
-          # 2. 全文件替换：把所有 protected 改成 public，消除保护壁垒
-          sed -i 's/protected:/public:/' src/UE/UEWrappers.hpp
+          # 暴力把所有 protected 改为 public，解除访问限制
+          sed -i 's/protected:/public:/g' src/UE/UEWrappers.hpp
 
-          # 3. 修改 Dumper.cpp：直接访问改完权限后的 object 指针，摒弃 getObject()
-          sed -i 's/(uintptr_t)pkg.first == (uintptr_t)packageObj.getObject()/(uintptr_t)pkg.first == (uintptr_t)packageObj.object/' src/Dumper.cpp
+          # 核心修复：替换掉歧义的 pkg.first == packageObj，强制比较它们的指针
+          sed -i 's|pkg.first == packageObj|pkg.first == packageObj.object|' src/Dumper.cpp
 
       - name: 执行 CMake 构建 (ImGui GUI 版本)
         run: |
