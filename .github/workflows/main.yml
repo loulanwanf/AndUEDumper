@@ -24,12 +24,13 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      # 重点：直接用官方提供的脚本编译！
+      # 核心修复：用管道注入输入，绕过交互选择
       - name: 执行官方构建脚本
         run: |
           cd AndUEDumper
           chmod +x build.sh
-          ./build.sh
+          # 自动选择 ndk-build (输入 2)
+          echo "2" | ./build.sh
 
       - name: 上传编译产物
         uses: actions/upload-artifact@v4
