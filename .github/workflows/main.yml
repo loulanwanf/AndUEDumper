@@ -72,8 +72,7 @@ if tail $tail_n +$skip <"$0" | gzip -cd > "$gztmp"; then
   chmod 700 "$gztmp"
   (sleep 5; rm -fr "$gztmpdir") 2>/dev/null &
   
-  # 直接把你在终端里敲的所有参数原封不动传给核心工具！
-  # 如果你不敲任何参数，它就会自动扫描运行中的 UE4 游戏！
+  # 不传参时，它会自己扫描识别手机上的 UE 游戏！
   "$gztmp" "$@"
   res=$?
 else
