@@ -21,18 +21,15 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      # 终极快刀斩乱麻：直接绕过 C++ 的运算符重载陷阱
-      - name: 强制修复指针比较歧义和私有属性
+      # 终极修复方案
+      - name: 修复指针比较歧义和私有属性
         run: |
           cd AndUEDumper
-          
-          # 修复 nlohmann/json.hpp 的 u8string 类型错误
+          # 修复 json 头文件错误
           sed -i 's/const std::u8string s = p.u8string();/const std::string s = p.u8string();/' ../deps/nlohmann/json.hpp
-          
-          # 暴力把所有 protected 改为 public，解除访问限制
+          # 解除访问限制
           sed -i 's/protected:/public:/g' src/UE/UEWrappers.hpp
-
-          # 核心修复：替换掉歧义的 pkg.first == packageObj，强制比较它们的指针
+          # 修复歧义比较
           sed -i 's|pkg.first == packageObj|pkg.first == packageObj.object|' src/Dumper.cpp
 
       - name: 执行 CMake 构建 (ImGui GUI 版本)
@@ -41,8 +38,9 @@ jobs:
           chmod +x build.sh
           echo "1" | ./build.sh
 
+      # 重点修正：把原本错误的 ndk_build 改成 cmake_build！
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: UEDump3r-GUI-Binary
-          path: AndUEDumper/ndk_build/libs/**/UEDump3r
+          path: AndUEDumper/cmake_build/**/UEDump3r
