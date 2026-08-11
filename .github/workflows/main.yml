@@ -6,14 +6,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 提前配置 git，把 git:// 协议全部强制替换为 https://，防网络超时
-      - name: 配置 Git 协议替换
-        run: git config --global url."https://github.com/".insteadOf git://github.com/
+      # 强制替换 git 协议为 https，避开网络超时
+      - name: 强制修正 Git 协议
+        run: |
+          git config --global url."https://github.com/".insteadOf git://github.com/
+          git config --global url."https://".insteadOf git://
 
+      # 拉取代码（含子模块），特别设置了重试机制防断连
       - name: 拉取代码（含子模块）
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 下载并配置 NDK r25c
         run: |
