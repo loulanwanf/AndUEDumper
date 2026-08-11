@@ -1,4 +1,4 @@
-name: Build UEDumper
+name: Build UEDumper (External ImGui)
 on:
   workflow_dispatch:
 
@@ -9,9 +9,12 @@ jobs:
       - name: 修正子模块协议
         run: git config --global url."https://github.com/".insteadOf git://github.com/
 
-      - name: 拉取完整代码
+      # 这里使用了原作者的 external-gui 分支！
+      - name: 拉取外部 ImGui 分支代码
         uses: actions/checkout@v4
         with:
+          repository: MJx0/AndUEDumper
+          ref: external-gui
           submodules: 'recursive'
 
       - name: 配置 NDK r25c
@@ -21,15 +24,15 @@ jobs:
           echo "NDK_HOME=${{ github.workspace }}/android-ndk-r25c" >> $GITHUB_ENV
           echo "${{ github.workspace }}/android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
 
-      - name: 执行官方构建脚本
+      # 重点：这里必须选 1 (CMake)，才能把 ImGui 渲染库编译进去！
+      - name: 执行 CMake 构建 (包含 ImGui 支持)
         run: |
           cd AndUEDumper
           chmod +x build.sh
-          echo "2" | ./build.sh
+          echo "1" | ./build.sh
 
-      # 只有这一项，直接上传编译出来的原始二进制文件
-      - name: 上传编译产物
+      - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
-          name: UEDump3r-Binary
+          name: UEDump3r-GUI-Binary
           path: AndUEDumper/ndk_build/libs/**/UEDump3r
